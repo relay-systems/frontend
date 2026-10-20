@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - 'TASK_*'
+  pull_request:
+    branches:
+      - test
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required files
+        run: |
+          missing=0
+          for f in README.md .gitignore; do
+            [ -f "$f" ] || { echo "Missing required file: $f"; missing=1; }
+          done
+          exit $missing
+
+      - name: No secret-looking files are tracked
+        run: |
+          bad=$(git ls-files | grep -E '(^|/)\.env($|\.)|\.(pem|key|p12|pfx|jks)$|(^|/)id_(rsa|ed25519)' | grep -vE '(^|/)\.env\.[A-Za-z0-9_-]*example$' || true)
+          if [ -n "$bad" ]; then
+            echo "Tracked files that look like secrets:"
+            echo "$bad"
+            exit 1
+          fi
